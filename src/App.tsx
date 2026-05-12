@@ -12,7 +12,9 @@ const EMPTY_FORM: FormData = {
   contactName: '', contactPhone: '',
   gender: '', age: '', weight: '', height: '', nationality: '',
   symptoms: '', diseases: '',
-  address: '', lat: '', lng: '', notes: '',
+  address: '', lat: '', lng: '',
+  subdistrict: '', district: '', province: '',
+  notes: '',
 }
 
 export default function App() {

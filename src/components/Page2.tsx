@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+// Page2.tsx
+import { useState } from 'react'
 import {
-  MapPinIcon,
   MagnifyingGlassIcon,
   CursorArrowRaysIcon,
 } from '@heroicons/react/24/outline'
 import Card from './Card'
-import MapPicker from './MapPicker'
+import MapPicker, { type LocalityInfo } from './MapPicker'
 import type { FormData } from '../types'
 
 interface Props {
@@ -16,39 +16,49 @@ interface Props {
 }
 
 export default function Page2({ formData, onChange, onNext, onBack }: Props) {
-  const [coordLabel, setCoordLabel] = useState('ยังไม่ได้เลือกพิกัด')
+  const [searching, setSearching] = useState(false)
 
-  useEffect(() => {
-    if (formData.lat && formData.lng) {
-      setCoordLabel(`พิกัด: ${parseFloat(formData.lat).toFixed(5)}, ${parseFloat(formData.lng).toFixed(5)}`)
-    }
-  }, [formData.lat, formData.lng])
-
+  /* ใช้ตำแหน่งปัจจุบัน (GPS) — แค่ส่ง lat/lng, MapPicker จะ reverse geocode เอง */
   function useMyLocation() {
     if (!navigator.geolocation) { alert('เบราว์เซอร์นี้ไม่รองรับ GPS'); return }
-    setCoordLabel('กำลังขอตำแหน่ง...')
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         onChange({ lat: String(pos.coords.latitude), lng: String(pos.coords.longitude) })
       },
-      () => setCoordLabel('ไม่สามารถเข้าถึงตำแหน่งได้')
+      () => alert('ไม่สามารถเข้าถึงตำแหน่งได้ กรุณาอนุญาต GPS')
     )
   }
 
+  /* ค้นหาจากที่อยู่ข้อความ — ใช้ Google Geocoder */
   function searchAddress() {
     const addr = formData.address.trim()
     if (!addr) { alert('กรุณากรอกที่อยู่ก่อน'); return }
-    setCoordLabel('กำลังค้นหา...')
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.length > 0) {
-          onChange({ lat: data[0].lat, lng: data[0].lon })
+    if (!window.google?.maps) { alert('กรุณารอแผนที่โหลดก่อน'); return }
+    setSearching(true)
+    const geocoder = new window.google.maps.Geocoder()
+    geocoder.geocode(
+      { address: addr + ' ประเทศไทย', region: 'TH', language: 'th' },
+      (results, status) => {
+        setSearching(false)
+        if (status === 'OK' && results?.length) {
+          const loc = results[0].geometry.location
+          onChange({ lat: String(loc.lat()), lng: String(loc.lng()) })
         } else {
-          setCoordLabel('ไม่พบที่อยู่นี้')
+          alert('ไม่พบที่อยู่นี้ ลองพิมพ์ชื่อย่อหรือชื่อภาษาไทย')
         }
-      })
-      .catch(() => setCoordLabel('เกิดข้อผิดพลาด'))
+      }
+    )
+  }
+
+  /* MapPicker ส่ง locality กลับมาพร้อม lat/lng */
+  function handleMapChange(lat: number, lng: number, locality: LocalityInfo) {
+    onChange({
+      lat: String(lat),
+      lng: String(lng),
+      subdistrict: locality.subdistrict,
+      district   : locality.district,
+      province   : locality.province,
+    })
   }
 
   const field = (label: string, req: boolean, children: React.ReactNode) => (
@@ -67,22 +77,15 @@ export default function Page2({ formData, onChange, onNext, onBack }: Props) {
       {/* Contact */}
       <Card icon="fa-solid fa-user" title="ข้อมูลผู้ติดต่อ / ผู้ดูแล">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {field('ชื่อผู้ติดต่อ (ไม่ต้องระบุคำนำหน้าชื่อ)', true,
+          {field('ชื่อผู้ติดต่อ', true,
             <input className={inputCls} placeholder="ชื่อ - นามสกุล"
               value={formData.contactName}
-              onChange={(e) => {
-                const val = e.target.value.replace(/[^\p{L}\s]/gu, '')
-                onChange({ contactName: val })
-              }} />
+              onChange={(e) => onChange({ contactName: e.target.value })} />
           )}
           {field('เบอร์โทรศัพท์', true,
-            <input className={inputCls} type="tel" placeholder="0XXXXXXXXX"
-              maxLength={10} inputMode="numeric" pattern="[0-9]*"
+            <input className={inputCls} type="tel" placeholder="0XX-XXXXXXX"
               value={formData.contactPhone}
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, '')
-                if (val.length <= 10) onChange({ contactPhone: val })
-              }} />
+              onChange={(e) => onChange({ contactPhone: e.target.value })} />
           )}
         </div>
       </Card>
@@ -99,44 +102,20 @@ export default function Page2({ formData, onChange, onNext, onBack }: Props) {
             </select>
           )}
           {field('อายุ (ปี)', true,
-            <input className={inputCls} type="text" placeholder="อายุ"
-              maxLength={3} inputMode="numeric" pattern="[0-9]*"
-              value={formData.age}
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, '')
-                if (val.length <= 3) onChange({ age: val })
-              }} />
+            <input className={inputCls} type="number" placeholder="อายุ" min={0} max={150}
+              value={formData.age} onChange={(e) => onChange({ age: e.target.value })} />
           )}
           {field('น้ำหนัก (กก.)', false,
-            <input className={inputCls} type="text" placeholder="กก."
-              maxLength={3} inputMode="numeric" pattern="[0-9]*"
-              value={formData.weight}
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, '')
-                if (val.length <= 3) onChange({ weight: val })
-              }} />
+            <input className={inputCls} type="number" placeholder="กก." min={0}
+              value={formData.weight} onChange={(e) => onChange({ weight: e.target.value })} />
           )}
           {field('ส่วนสูง (ซม.)', false,
-            <input className={inputCls} type="text" placeholder="ซม."
-              maxLength={3} inputMode="numeric" pattern="[0-9]*"
-              value={formData.height}
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, '')
-                if (val.length <= 3) onChange({ height: val })
-              }} />
+            <input className={inputCls} type="number" placeholder="ซม." min={0}
+              value={formData.height} onChange={(e) => onChange({ height: e.target.value })} />
           )}
           {field('สัญชาติ', false,
-            <select className={inputCls} value={formData.nationality} onChange={(e) => onChange({ nationality: e.target.value })}>
-              <option value="">-- เลือกสัญชาติ --</option>
-              <option>ไทย</option>
-              <option>อังกฤษ</option>
-              <option>จีน</option>
-              <option>เกาหลี</option>
-              <option>ลาว</option>
-              <option>เมียนมา</option>
-              <option>มาเลเซีย</option>
-              <option>เวียดนาม</option>
-            </select>
+            <input className={inputCls} placeholder="ไทย"
+              value={formData.nationality} onChange={(e) => onChange({ nationality: e.target.value })} />
           )}
           <div className="md:col-span-2">
             {field('อาการปัจจุบัน', true,
@@ -158,9 +137,10 @@ export default function Page2({ formData, onChange, onNext, onBack }: Props) {
       {/* Map */}
       <Card icon="fa-solid fa-location-dot" title="พิกัดสถานที่ดูแล">
         <div className="flex flex-col gap-3">
-          {field('ที่อยู่', true,
+          {field('ที่อยู่ (ใช้ค้นหาหรืออ้างอิง)', true,
             <input className={inputCls} placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด"
-              value={formData.address} onChange={(e) => onChange({ address: e.target.value })} />
+              value={formData.address} onChange={(e) => onChange({ address: e.target.value })}
+              onKeyDown={(e) => e.key === 'Enter' && searchAddress()} />
           )}
 
           <div className="flex gap-2 flex-wrap">
@@ -169,32 +149,21 @@ export default function Page2({ formData, onChange, onNext, onBack }: Props) {
               <CursorArrowRaysIcon className="w-4 h-4" />
               ใช้ตำแหน่งปัจจุบัน
             </button>
-            <button onClick={searchAddress}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-full border-2 border-brand-400 text-brand-500 text-xs font-semibold font-sarabun hover:bg-brand-50 transition-colors">
-              <MagnifyingGlassIcon className="w-4 h-4" />
-              ค้นหาจากที่อยู่
+            <button onClick={searchAddress} disabled={searching}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-full border-2 border-brand-400 text-brand-500 text-xs font-semibold font-sarabun hover:bg-brand-50 transition-colors disabled:opacity-50">
+              {searching
+                ? <span className="w-4 h-4 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
+                : <MagnifyingGlassIcon className="w-4 h-4" />
+              }
+              {searching ? 'กำลังค้นหา...' : 'ค้นหาจากที่อยู่'}
             </button>
           </div>
 
           <MapPicker
             lat={formData.lat ? parseFloat(formData.lat) : null}
             lng={formData.lng ? parseFloat(formData.lng) : null}
-            onChange={(la, ln) => onChange({ lat: String(la), lng: String(ln) })}
+            onChange={handleMapChange}
           />
-
-          <div className="flex items-center gap-1.5 text-xs text-gray-500 font-sarabun">
-            <MapPinIcon className="w-3.5 h-3.5 text-brand-400" />
-            {coordLabel}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {field('Latitude', false,
-              <input className={inputCls} readOnly placeholder="รอพิกัด..." value={formData.lat} />
-            )}
-            {field('Longitude', false,
-              <input className={inputCls} readOnly placeholder="รอพิกัด..." value={formData.lng} />
-            )}
-          </div>
         </div>
       </Card>
 
