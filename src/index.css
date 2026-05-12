@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    font-family: 'Sarabun', sans-serif;
+    @apply bg-gray-50 text-gray-800 min-h-screen;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Prompt', sans-serif;
+  }
+}
+
+@layer components {
+  /* Calendar range highlight */
+  .cal-in-range {
+    @apply bg-brand-100 text-brand-700;
+    border-radius: 0 !important;
+  }
+  .cal-start {
+    @apply bg-brand-500 text-white font-bold;
+    border-radius: 8px 0 0 8px !important;
+  }
+  .cal-end {
+    @apply bg-brand-500 text-white font-bold;
+    border-radius: 0 8px 8px 0 !important;
+  }
+  .cal-start.cal-end {
+    border-radius: 8px !important;
+  }
+  .cal-alt-day {
+    @apply bg-brand-200 text-brand-900 opacity-60;
+  }
+}
+
+/* Leaflet map container */
+#map-container {
+  z-index: 0;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { @apply bg-gray-100; }
+::-webkit-scrollbar-thumb { @apply bg-brand-200 rounded-full; }
