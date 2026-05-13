@@ -37,7 +37,7 @@ export default function Page2({ formData, onChange, onNext, onBack }: Props) {
     setSearching(true)
     const geocoder = new window.google.maps.Geocoder()
     geocoder.geocode(
-      { address: addr + ' ประเทศไทย', region: 'TH', language: 'th' },
+      { address: addr + ' ประเทศไทย', region: 'TH'},
       (results, status) => {
         setSearching(false)
         if (status === 'OK' && results?.length) {
@@ -58,6 +58,7 @@ export default function Page2({ formData, onChange, onNext, onBack }: Props) {
       subdistrict: locality.subdistrict,
       district   : locality.district,
       province   : locality.province,
+      address_full : locality.raw,
     })
   }
 

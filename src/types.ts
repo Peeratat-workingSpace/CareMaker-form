@@ -26,6 +26,7 @@ export interface FormData {
   address: string
   lat: string
   lng: string
+  address_full : string
   subdistrict: string   // ตำบล / แขวง (จาก reverse geocode)
   district: string      // อำเภอ / เขต
   province: string      // จังหวัด
