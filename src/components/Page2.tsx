@@ -1,5 +1,5 @@
 // Page2.tsx
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   MagnifyingGlassIcon,
   CursorArrowRaysIcon,
@@ -17,6 +17,7 @@ interface Props {
 
 export default function Page2({ formData, onChange, onNext, onBack }: Props) {
   const [searching, setSearching] = useState(false)
+  const [searchInput, setSearchInput] = useState('')
 
   /* ใช้ตำแหน่งปัจจุบัน (GPS) — แค่ส่ง lat/lng, MapPicker จะ reverse geocode เอง */
   function useMyLocation() {
@@ -31,7 +32,7 @@ export default function Page2({ formData, onChange, onNext, onBack }: Props) {
 
   /* ค้นหาจากที่อยู่ข้อความ — ใช้ Google Geocoder */
   function searchAddress() {
-    const addr = formData.address.trim()
+    const addr = searchInput.trim()
     if (!addr) { alert('กรุณากรอกที่อยู่ก่อน'); return }
     if (!window.google?.maps) { alert('กรุณารอแผนที่โหลดก่อน'); return }
     setSearching(true)
@@ -58,11 +59,11 @@ export default function Page2({ formData, onChange, onNext, onBack }: Props) {
       subdistrict: locality.subdistrict,
       district   : locality.district,
       province   : locality.province,
-      address_full : locality.raw,
+      address    : locality.raw,
     })
   }
 
-  const field = (label: string, req: boolean, children: React.ReactNode) => (
+  const field = (label: string, req: boolean, children: ReactNode) => (
     <div className="flex flex-col gap-1.5">
       <label className="text-xs font-semibold text-gray-500 font-sarabun">
         {label} {req && <span className="text-red-500">*</span>}
@@ -81,12 +82,18 @@ export default function Page2({ formData, onChange, onNext, onBack }: Props) {
           {field('ชื่อผู้ติดต่อ', true,
             <input className={inputCls} placeholder="ชื่อ - นามสกุล"
               value={formData.contactName}
-              onChange={(e) => onChange({ contactName: e.target.value })} />
+              onChange={(e) => {
+                const val = e.target.value
+                if (/^[ก-๙a-zA-Z\s]*$/.test(val)) onChange({ contactName: val })
+              }} />
           )}
           {field('เบอร์โทรศัพท์', true,
             <input className={inputCls} type="tel" placeholder="0XX-XXXXXXX"
               value={formData.contactPhone}
-              onChange={(e) => onChange({ contactPhone: e.target.value })} />
+              onChange={(e) => {
+                const val = e.target.value
+                if (/^\d{0,10}$/.test(val)) onChange({ contactPhone: val })
+              }} />
           )}
         </div>
       </Card>
@@ -103,20 +110,43 @@ export default function Page2({ formData, onChange, onNext, onBack }: Props) {
             </select>
           )}
           {field('อายุ (ปี)', true,
-            <input className={inputCls} type="number" placeholder="อายุ" min={0} max={150}
-              value={formData.age} onChange={(e) => onChange({ age: e.target.value })} />
+            <input className={inputCls} type="text" inputMode="numeric" placeholder="อายุ"
+              value={formData.age}
+              onChange={(e) => {
+                const val = e.target.value
+                if (/^\d{0,3}$/.test(val)) onChange({ age: val })
+              }} />
           )}
           {field('น้ำหนัก (กก.)', false,
-            <input className={inputCls} type="number" placeholder="กก." min={0}
-              value={formData.weight} onChange={(e) => onChange({ weight: e.target.value })} />
+            <input className={inputCls} type="text" inputMode="numeric" placeholder="กก."
+              value={formData.weight}
+              onChange={(e) => {
+                const val = e.target.value
+                if (/^\d{0,3}$/.test(val)) onChange({ weight: val })
+              }} />
           )}
           {field('ส่วนสูง (ซม.)', false,
-            <input className={inputCls} type="number" placeholder="ซม." min={0}
-              value={formData.height} onChange={(e) => onChange({ height: e.target.value })} />
+            <input className={inputCls} type="text" inputMode="numeric" placeholder="ซม."
+              value={formData.height}
+              onChange={(e) => {
+                const val = e.target.value
+                if (/^\d{0,3}$/.test(val)) onChange({ height: val })
+              }} />
           )}
           {field('สัญชาติ', false,
-            <input className={inputCls} placeholder="ไทย"
-              value={formData.nationality} onChange={(e) => onChange({ nationality: e.target.value })} />
+            <select className={inputCls} value={formData.nationality} onChange={(e) => onChange({ nationality: e.target.value })}>
+              <option value="">-- เลือกสัญชาติ --</option>
+              <option value="ไทย">ไทย</option>
+              <option value="อังกฤษ">อังกฤษ</option>
+              <option value="จีน">จีน</option>
+              <option value="ญี่ปุ่น">ญี่ปุ่น</option>
+              <option value="เกาหลี">เกาหลี</option>
+              <option value="เวียดนาม">เวียดนาม</option>
+              <option value="อินโดนีเซีย">อินโดนีเซีย</option>
+              <option value="มาเลเซีย">มาเลเซีย</option>
+              <option value="เมียนมา">เมียนมา</option>
+              <option value="ลาว">ลาว</option>
+            </select>
           )}
           <div className="md:col-span-2">
             {field('อาการปัจจุบัน', true,
@@ -138,9 +168,9 @@ export default function Page2({ formData, onChange, onNext, onBack }: Props) {
       {/* Map */}
       <Card icon="fa-solid fa-location-dot" title="พิกัดสถานที่ดูแล">
         <div className="flex flex-col gap-3">
-          {field('ที่อยู่ (ใช้ค้นหาหรืออ้างอิง)', true,
+          {field('ค้นหาสถานที่ (เพื่อความสะดวกในการปักหมุด)', false,
             <input className={inputCls} placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด"
-              value={formData.address} onChange={(e) => onChange({ address: e.target.value })}
+              value={searchInput} onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && searchAddress()} />
           )}
 

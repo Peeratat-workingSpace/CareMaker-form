@@ -72,7 +72,7 @@ export default function Page3({
             สถานที่
           </div>
           <p className="font-sarabun text-sm text-gray-600">
-            {formData.address}
+            {formData.address || 'ไม่ได้ระบุที่อยู่'}
             {formData.lat ? ` (${parseFloat(formData.lat).toFixed(5)}, ${parseFloat(formData.lng).toFixed(5)})` : ' (ไม่ได้ระบุพิกัด)'}
           </p>
         </div>
